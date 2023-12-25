@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>Nexus christmas 2023</title>
+</head>
+
+<body>
+
+  <th:block th:fragment="pageHeader">
+    <script src="/js/util/stringUtil.js" th:src="@{/js/util/utilities.js}"></script>
+    <script src="/js/util/validator.js" th:src="@{/js/util/validator.js}"></script>
+
+    <script th:inline="javascript">
+      /*<![CDATA[*/
+      /*
+       * 画面表示時 (onLoad) に動作する処理群
+       */
+      document.addEventListener("DOMContentLoaded", event => {
+
+        // "id=login" を持つ要素にて "click" イベントが発火した際の処理
+        document.getElementById("login").addEventListener("click", () => {
+          // JavaにPOST送信するオブジェクトを取得・設定する
+          const postObj = {
+            "userName": document.querySelector("input[name=userName]").value,
+            "password": document.querySelector("input[name=password]").value
+          };
+
+          /*
+           * fetch API を使用し、Javaと非同期通信(POST)を行う
+           * SUCCESS時(then)： 通信結果に応じてログイン処理を呼び出す
+           *　ERROR時(catch)： エラー情報を console に出力する
+           */
+          fetch("/nexus/auth/login", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify(postObj),
+          })
+            .then(response => response.text())
+            .then(result => {
+              const user = JSON.parse(result);
+              if (util.isEmpty(user)) {
+                document.getElementById("hiddenUserName").value = "";
+                alert("ユーザー名またはパスワードが違います。");
+              } else {
+                document.getElementById("hiddenUserName").value = user["userName"];
+                login(user);
+              }
+            })
+            .catch(error => {
+              console.error("Error: ", error);
+            });
+        });
+
+        // "id=logout" を持つ要素にて "click" イベントが発火した際の処理
+        document.getElementById("logout").addEventListener("click", () => {
+          /*
+           * fetch API を使用し、Javaと非同期通信(POST)を行う
+           * SUCCESS時(then)： 通信結果に応じてログアウト処理を呼び出す
+           *　ERROR時(catch)： エラー情報を console に出力する
+           */
+          fetch("/nexus/auth/logout", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+          })
+            .then(response => response.text())
+            .then(result => {
+              document.getElementById("hiddenUserName").value = "";
+              alert("ログアウトしました。");
+              location.replace("/nexus/");
+            })
+            .catch(error => {
+              console.error("Error: ", error);
+            });
+        });
+      });
+
+      /**
+       * ログイン処理を実行する。
+       * @param user ユーザーアカウント情報
+       */
+      function login(user) {
+
+        const userName = user["userName"];
+
+        document.getElementById("hiddenUserName").value = userName;
+        document.querySelector(".welcomeMsg").innerText = "ようこそ！" + userName + "さん";
+        document.getElementById("login").classList.add('hidden');
+        document.getElementById("logout").classList.remove('hidden');
+        document.getElementById("mypageMenu").classList.remove('hidden');
+        document.querySelector("input[name=userName]").value = "";
+        document.querySelector("input[name=password]").value = "";
+      }
+
+      /**
+       * エラーメッセージの配列と、表示対象の要素を受け取り、エラーメッセージを表示させる。
+       * ユーザー登録と宛先登録から呼ばれる共通関数のためpage_headerに定義
+       * @param ul エラーメッセージを表示する対象のul要素
+       * @param messages 文字列(エラーメッセージ)の配列
+       */
+      function createErrorList(ul, messages) {
+        while (ul.lastChild) {
+          ul.removeChild(ul.lastChild);
+        }
+
+        // エラーチェック結果をList(ul)に表示する
+        for (const message of messages) {
+          const li = document.createElement("li");
+          li.innerText = message;
+          ul.appendChild(li);
+        }
+      }
+
+    </script>
+
+    <div class="headerTop">
+      <h1 class="logo"><a href="/nexus/">Nexus Xmas 2023</a></h1>
+      <div class="headerSub">
+        <span class="signup">
+          <a href="/nexus/user/" th:href="@{/nexus/user/}">
+            新規ユーザ登録はこちら
+          </a>
+        </span>
+        <span class="welcomeMsg"
+          th:text="'ようこそ！ ' + ${loginSession == null || loginSession.getUserName() == null ? 'ゲスト さん' : loginSession.getUserName() + ' さん'}">
+        </span>
+      </div>
+    </div>
+
+    <nav>
+      <div class="loginArea">
+        <input type="text" name="userName" />
+        <input type="password" name="password" />
+        <input type="hidden" id="hiddenUserName" value="" />
+        <button id="login"
+          th:class="${loginSession == null || loginSession.getUserName() == null ? '' : 'hidden'}">ログイン</button>
+        <button id="logout"
+          th:class="${loginSession == null || loginSession.getUserName() == null ? 'hidden' : ''}">ログアウト</button>
+      </div>
+      <ul class="menu">
+        <li id="cartMenu"><a href="/nexus/cart/">カート</a></li>
+        <li id="mypageMenu" th:class="${loginSession == null || loginSession.getUserName() == null ? 'hidden' : ''}">
+
+          <a href="/nexus/mypage/">マイページ</a>
+        </li>
+      </ul>
+    </nav>
+  </th:block>
+
+</body>
+
+</html>
